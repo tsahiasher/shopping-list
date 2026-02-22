@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sleek Shopping List</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <h1>Shopping Lists</h1>
+      </header>
+      
+      <main class="app-container">
+        <!-- Sidebar: List Management -->
+        <aside class="list-sidebar">
+          <div class="sidebar-header">
+            <h2>My Lists</h2>
+            <form id="new-list-form">
+              <input type="text" id="new-list-input" placeholder="New list name..." required autocomplete="off" />
+              <button type="submit" class="btn-primary" aria-label="Add List">+</button>
+            </form>
+          </div>
+          <ul id="lists-container" class="lists-container">
+            <!-- Lists will be rendered here -->
+          </ul>
+        </aside>
+
+        <!-- Main Area: Item Management -->
+        <section class="items-area">
+          <div class="items-header">
+            <h2 id="current-list-title">Select a list</h2>
+            <form id="new-item-form" style="display: none;">
+              <input type="text" id="new-item-input" placeholder="Add an item..." required autocomplete="off"/>
+              <button type="submit" class="btn-primary">Add</button>
+            </form>
+          </div>
+          <ul id="items-container" class="items-container">
+            <!-- Items will be rendered here -->
+            <div class="empty-state">Choose a list from the sidebar to view items.</div>
+          </ul>
+        </section>
+      </main>
+      
+      <!-- Authentication Overlay -->
+      <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-card">
+          <h2 id="auth-title">Checking Authentication...</h2>
+          <form id="auth-form" style="display: none;">
+            <input type="email" id="auth-email" placeholder="Email" required />
+            <input type="password" id="auth-password" placeholder="Password" required />
+            <button type="submit" id="auth-submit-btn" class="btn-primary">Submit</button>
+            <div id="auth-error" class="auth-error"></div>
+          </form>
+          <div id="auth-loading" class="auth-loading">Loading...</div>
+          <button id="auth-logout-btn" class="btn-secondary" style="display: none;">Logout</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

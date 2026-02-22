@@ -1,0 +1,26 @@
+# Environment
+__pycache__/
+.env
+venv/
+env/
+.venv/
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Database
+*.sqlite
+*.sqlite3
+backend/app.db
