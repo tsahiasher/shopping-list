@@ -17,6 +17,8 @@ export class AuthManager {
   private logoutBtn: HTMLButtonElement;
   private toggleBtn: HTMLDivElement;
 
+  private isSubmitting = false;
+
   private onAuthSuccess: (user: User) => void;
   private currentMode: "loading" | "login" | "setup" | "authenticated" = "loading";
 
@@ -48,6 +50,11 @@ export class AuthManager {
   private init() {
     // Listen for auth changes
     subscribeToAuthChanges((user) => {
+      // Ignore auth changes while we're intentionally logging in or registering.
+      // This prevents the UI from trying to read database collections before
+      // the admin claim has successfully been saved to the database.
+      if (this.isSubmitting) return;
+
       this.handleAuthChange(user);
     });
 
@@ -76,10 +83,13 @@ export class AuthManager {
       }
 
       this.submitBtn.disabled = true;
+      this.isSubmitting = true;
 
       try {
-        await loginOrRegisterAdmin(email, pass);
-        // If successful, onAuthStateChanged will fire and handle UI update
+        const user = await loginOrRegisterAdmin(email, pass);
+        // Explicitly handle the state change here now that we know
+        // loginOrRegisterAdmin successfully completed writing the claims.
+        this.handleAuthChange(user);
       } catch (error: any) {
         let msg = "Authentication failed.";
         if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
@@ -92,6 +102,7 @@ export class AuthManager {
         this.showError(msg);
       } finally {
         this.submitBtn.disabled = false;
+        this.isSubmitting = false;
       }
     });
 
