@@ -17,6 +17,7 @@ export class AuthManager {
   private errorDisplay: HTMLDivElement;
   private loadingDisplay: HTMLDivElement;
   private logoutBtn: HTMLButtonElement;
+  private toggleBtn: HTMLDivElement;
 
   private onAuthSuccess: (user: User) => void;
   private currentMode: "loading" | "login" | "setup" | "authenticated" = "loading";
@@ -35,6 +36,14 @@ export class AuthManager {
     this.loadingDisplay = document.getElementById("auth-loading") as HTMLDivElement;
     this.logoutBtn = document.getElementById("auth-logout-btn") as HTMLButtonElement;
 
+    this.toggleBtn = document.createElement("div");
+    this.toggleBtn.style.cursor = "pointer";
+    this.toggleBtn.style.color = "#3b82f6";
+    this.toggleBtn.style.textDecoration = "underline";
+    this.toggleBtn.style.fontSize = "0.9rem";
+    this.toggleBtn.style.textAlign = "center";
+    this.form.appendChild(this.toggleBtn);
+
     this.init();
   }
 
@@ -42,6 +51,15 @@ export class AuthManager {
     // Listen for auth changes
     subscribeToAuthChanges((user) => {
       this.handleAuthChange(user);
+    });
+
+    this.toggleBtn.addEventListener("click", () => {
+      this.clearError();
+      if (this.currentMode === "login") {
+        this.setMode("setup");
+      } else {
+        this.setMode("login");
+      }
     });
 
     // Handle form submit
@@ -122,15 +140,20 @@ export class AuthManager {
     if (mode === "loading") {
       this.title.textContent = "Checking Authentication...";
       this.loadingDisplay.style.display = "block";
+      this.toggleBtn.style.display = "none";
       this.overlay.classList.remove("hidden");
     } else if (mode === "login") {
       this.title.textContent = "Admin Login";
       this.submitBtn.textContent = "Login";
+      this.toggleBtn.textContent = "Don't have an account? Create one";
+      this.toggleBtn.style.display = "block";
       this.form.style.display = "flex";
       this.overlay.classList.remove("hidden");
     } else if (mode === "setup") {
       this.title.textContent = "Setup Admin Account";
       this.submitBtn.textContent = "Create Account";
+      this.toggleBtn.textContent = "Already have an account? Login instead";
+      this.toggleBtn.style.display = "block";
       this.form.style.display = "flex";
       this.overlay.classList.remove("hidden");
     } else if (mode === "authenticated") {

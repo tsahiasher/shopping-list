@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is the admin.
+    // It verifies that request.auth is not null, and that the UID matches
+    // the UID stored in the /config/admin document.
+    function isAdmin() {
+      return request.auth != null && 
+             request.auth.uid == get(/databases/$(database)/documents/config/admin).data.uid;
+    }
+
+    // The config document itself.
+    match /config/admin {
+      // Anyone can read the config document to see if an admin is already set up.
+      allow read: if true;
+      
+      // Allow creation only if the document doesn't exist yet (first-time setup).
+      // We also enforce that they set the uid field to their own request.auth.uid.
+      allow create: if request.auth != null && 
+                       !exists(/databases/$(database)/documents/config/admin) &&
+                       request.resource.data.uid == request.auth.uid;
+      
+      // Prevent subsequent modifications or deletions.
+      allow update, delete: if false;
+    }
+
+    // Require admin access for everything else (lists and items).
+    match /lists/{listId} {
+      allow read, write: if isAdmin();
+    }
+    
+    match /items/{itemId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

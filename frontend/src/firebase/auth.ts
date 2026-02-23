@@ -23,11 +23,26 @@ export async function isAdminClaimed(): Promise<boolean> {
     const configDocRef = doc(db, "config", "admin");
     const docSnap = await getDoc(configDocRef);
     return docSnap.exists() && !!docSnap.data().uid;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error checking admin claim status:", error);
-    // In a real app we might want to handle permission denied specifically
-    // but for now, we'll assume any error implies no claim/unreachable.
-    return false;
+    
+    // If the error is an unauthenticated or permission denied error,
+    // it's highly likely the rules are deployed and blocking access, 
+    // OR we just can't read it. If we can't be sure, we should default 
+    // to login to avoid 'email-already-in-use' errors.
+    if (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions')) {
+       // If we lack permissions to read the config doc, it probably exists
+       // and is locked down (e.g., if rules are not what we expect).
+       // Actually, with our rules, anyone can read /config/admin.
+       // The error might be because Firebase Auth isn't fully set up or offline.
+       // Let's assume claimed = true safely so they don't try to recreate.
+       console.warn("Permission denied checking admin status. Assuming admin exists.");
+       return true; 
+    }
+    
+    // By default, if we can't tell, assume there IS an admin to prevent them from
+    // attempting to create a new one when the DB is just offline/unreachable.
+    return true;
   }
 }
 
@@ -62,6 +77,18 @@ export async function registerAdmin(email: string, password: string): Promise<Us
  */
 export async function loginAdmin(email: string, password: string): Promise<User> {
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+  // If config/admin doesn't exist (e.g., account created manually or interrupted flow), create it
+  try {
+    const configDocRef = doc(db, "config", "admin");
+    const docSnap = await getDoc(configDocRef);
+    if (!docSnap.exists()) {
+      await setDoc(configDocRef, { uid: userCredential.user.uid });
+    }
+  } catch (error) {
+    console.error("Could not verify/set admin claim after login:", error);
+  }
+
   return userCredential.user;
 }
 
