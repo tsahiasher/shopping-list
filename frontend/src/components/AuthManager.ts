@@ -1,10 +1,7 @@
 import { 
   subscribeToAuthChanges, 
-  isAdminClaimed, 
-  loginAdmin, 
-  registerAdmin,
-  logoutAdmin,
-  isEmailRegistered
+  loginOrRegisterAdmin,
+  logoutAdmin
 } from "../firebase/auth";
 import type { User } from "firebase/auth";
 
@@ -81,16 +78,7 @@ export class AuthManager {
       this.submitBtn.disabled = true;
 
       try {
-        // Automatically check if the email exists
-        const exists = await isEmailRegistered(email);
-        
-        if (exists) {
-          // It exists, so we must log in
-          await loginAdmin(email, pass);
-        } else {
-          // It does not exist, so register
-          await registerAdmin(email, pass);
-        }
+        await loginOrRegisterAdmin(email, pass);
         // If successful, onAuthStateChanged will fire and handle UI update
       } catch (error: any) {
         let msg = "Authentication failed.";
@@ -118,21 +106,8 @@ export class AuthManager {
       this.setMode("authenticated");
       this.onAuthSuccess(user);
     } else {
-      // Not authenticated, figure out if claimed
-      this.setMode("loading");
-      try {
-        const claimed = await isAdminClaimed();
-        if (claimed) {
-          this.setMode("login");
-        } else {
-          this.setMode("setup");
-        }
-      } catch (error) {
-        console.error("Checking admin claim error", error);
-        this.showError("Failed to check server configuration. Retrying...");
-        // Re-check after a moment might be needed in a real app
-        setTimeout(() => this.handleAuthChange(user), 3000);
-      }
+      // Not authenticated, just show the login/setup form
+      this.setMode("login");
     }
   }
 
