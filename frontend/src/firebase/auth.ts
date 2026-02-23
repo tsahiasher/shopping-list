@@ -2,7 +2,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   onAuthStateChanged,
-  signOut
+  signOut,
+  fetchSignInMethodsForEmail
 } from "firebase/auth";
 import type { User } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -16,6 +17,34 @@ export function subscribeToAuthChanges(callback: (user: User | null) => void) {
 // --- Admin Configuration ---
 
 /**
+ * Checks if the given email is already registered.
+ */
+export async function isEmailRegistered(email: string): Promise<boolean> {
+  try {
+    const methods = await fetchSignInMethodsForEmail(auth, email);
+    return methods.length > 0;
+  } catch (error) {
+    console.warn("Could not check if email is registered:", error);
+    return false;
+  }
+}
+
+/**
+ * Set the admin claim explicitly after a successful login/registration.
+ */
+export async function setAdminClaim(uid: string): Promise<void> {
+  try {
+    const configDocRef = doc(db, "config", "admin");
+    const docSnap = await getDoc(configDocRef);
+    if (!docSnap.exists()) {
+      await setDoc(configDocRef, { uid });
+    }
+  } catch (error) {
+    console.error("Could not set admin claim:", error);
+  }
+}
+
+/**
  * Checks if an admin has already been claimed for this app.
  */
 export async function isAdminClaimed(): Promise<boolean> {
@@ -24,21 +53,7 @@ export async function isAdminClaimed(): Promise<boolean> {
     const docSnap = await getDoc(configDocRef);
     return docSnap.exists() && !!docSnap.data().uid;
   } catch (error: any) {
-    console.error("Error checking admin claim status:", error);
-    
-    // If the error is an unauthenticated or permission denied error,
-    // it's highly likely the rules are deployed and blocking access, 
-    // OR we just can't read it. If we can't be sure, we should default 
-    // to login to avoid 'email-already-in-use' errors.
-    if (error.code === 'permission-denied' || error.message?.includes('Missing or insufficient permissions')) {
-       // If we lack permissions to read the config doc, it probably exists
-       // and is locked down (e.g., if rules are not what we expect).
-       // Actually, with our rules, anyone can read /config/admin.
-       // The error might be because Firebase Auth isn't fully set up or offline.
-       // Let's assume claimed = true safely so they don't try to recreate.
-       console.warn("Permission denied checking admin status. Assuming admin exists.");
-       return true; 
-    }
+    console.warn("Could not check if admin is claimed. Defaulting to true (login requires it).", error);
     
     // By default, if we can't tell, assume there IS an admin to prevent them from
     // attempting to create a new one when the DB is just offline/unreachable.
@@ -62,8 +77,7 @@ export async function registerAdmin(email: string, password: string): Promise<Us
 
   try {
     // Save their UID as the admin in config/admin
-    const configDocRef = doc(db, "config", "admin");
-    await setDoc(configDocRef, { uid: user.uid });
+    await setAdminClaim(user.uid);
     return user;
   } catch (error) {
     // If setting the admin fails, clean up the created auth user
@@ -79,15 +93,7 @@ export async function loginAdmin(email: string, password: string): Promise<User>
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
   // If config/admin doesn't exist (e.g., account created manually or interrupted flow), create it
-  try {
-    const configDocRef = doc(db, "config", "admin");
-    const docSnap = await getDoc(configDocRef);
-    if (!docSnap.exists()) {
-      await setDoc(configDocRef, { uid: userCredential.user.uid });
-    }
-  } catch (error) {
-    console.error("Could not verify/set admin claim after login:", error);
-  }
+  await setAdminClaim(userCredential.user.uid);
 
   return userCredential.user;
 }

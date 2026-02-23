@@ -3,7 +3,8 @@ import {
   isAdminClaimed, 
   loginAdmin, 
   registerAdmin,
-  logoutAdmin
+  logoutAdmin,
+  isEmailRegistered
 } from "../firebase/auth";
 import type { User } from "firebase/auth";
 
@@ -62,6 +63,9 @@ export class AuthManager {
       }
     });
 
+    // Make toggle btn hidden since we are auto-detecting
+    this.toggleBtn.style.display = "none";
+
     // Handle form submit
     this.form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -77,9 +81,14 @@ export class AuthManager {
       this.submitBtn.disabled = true;
 
       try {
-        if (this.currentMode === "login") {
+        // Automatically check if the email exists
+        const exists = await isEmailRegistered(email);
+        
+        if (exists) {
+          // It exists, so we must log in
           await loginAdmin(email, pass);
-        } else if (this.currentMode === "setup") {
+        } else {
+          // It does not exist, so register
           await registerAdmin(email, pass);
         }
         // If successful, onAuthStateChanged will fire and handle UI update
@@ -142,18 +151,11 @@ export class AuthManager {
       this.loadingDisplay.style.display = "block";
       this.toggleBtn.style.display = "none";
       this.overlay.classList.remove("hidden");
-    } else if (mode === "login") {
-      this.title.textContent = "Admin Login";
-      this.submitBtn.textContent = "Login";
-      this.toggleBtn.textContent = "Don't have an account? Create one";
-      this.toggleBtn.style.display = "block";
-      this.form.style.display = "flex";
-      this.overlay.classList.remove("hidden");
-    } else if (mode === "setup") {
-      this.title.textContent = "Setup Admin Account";
-      this.submitBtn.textContent = "Create Account";
-      this.toggleBtn.textContent = "Already have an account? Login instead";
-      this.toggleBtn.style.display = "block";
+    } else if (mode === "login" || mode === "setup") {
+      // We merge login and setup into a single generic "Authenticate" mode
+      this.title.textContent = "Admin Login / Setup";
+      this.submitBtn.textContent = "Continue";
+      this.toggleBtn.style.display = "none";
       this.form.style.display = "flex";
       this.overlay.classList.remove("hidden");
     } else if (mode === "authenticated") {
